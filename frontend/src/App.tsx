@@ -54,10 +54,7 @@ const App = () => {
           userLat,
           userLng
         );
-        
-        // 👇 TESTING KE LIYE (F12 daba kar Console mein check karein)
-        console.log("Aapki Location:", userLat, userLng);
-        console.log("Store se Doori:", distance, "KM");
+
 
         if (distance > MAX_DISTANCE_KM) {
           setWarningMessage("Sorry, we can't proceed. Hamari service aapke location per available nhi hai.");
@@ -77,7 +74,6 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           
-          {/* 👇 YAHAN CSS CHANGE KIYA HAI: fixed, left-0, right-0 aur z-[99999] add kiya hai */}
           {warningMessage && showWarning && (
             <div className="bg-red-50 text-red-600 border-b border-red-200 px-4 py-3 flex items-start sm:items-center justify-between fixed top-0 left-0 right-0 z-[99999] shadow-md animate-in slide-in-from-top-2">
               <div className="flex items-center gap-3">
