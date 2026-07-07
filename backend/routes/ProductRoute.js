@@ -1,5 +1,5 @@
 const express = require('express');
-const Product = require('../models/Product'); // Note: path updated to '../'
+const Product = require('../models/product'); // Note: path updated to '../'
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const router = express.Router();
