@@ -1,0 +1,204 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Earth Tones Color Palette */
+    --background: 36 33% 96%;
+    --foreground: 30 10% 20%;
+
+    --card: 36 30% 98%;
+    --card-foreground: 30 10% 20%;
+
+    --popover: 36 30% 98%;
+    --popover-foreground: 30 10% 20%;
+
+    /* Terracotta Red */
+    --primary: 14 51% 47%;
+    --primary-foreground: 36 33% 98%;
+
+    /* Sand Beige */
+    --secondary: 38 40% 85%;
+    --secondary-foreground: 30 10% 20%;
+
+    /* Muted Tones */
+    --muted: 36 20% 90%;
+    --muted-foreground: 30 10% 45%;
+
+    /* Leaf Green */
+    --accent: 90 36% 36%;
+    --accent-foreground: 36 33% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 36 25% 85%;
+    --input: 36 25% 85%;
+    --ring: 14 51% 47%;
+
+    --radius: 0.5rem;
+
+    /* Custom Design Tokens */
+    --cement: 30 5% 50%;
+    --terracotta: 14 51% 47%;
+    --sand: 38 40% 85%;
+    --leaf: 90 36% 36%;
+    --earth: 25 30% 25%;
+    
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(25 30% 20% / 0.9), hsl(14 51% 30% / 0.8));
+    --gradient-card: linear-gradient(180deg, hsl(36 30% 98%), hsl(36 25% 95%));
+    --gradient-accent: linear-gradient(135deg, hsl(90 36% 36%), hsl(90 40% 28%));
+    
+    /* Shadows */
+    --shadow-sm: 0 2px 8px hsl(30 10% 20% / 0.06);
+    --shadow-md: 0 4px 16px hsl(30 10% 20% / 0.1);
+    --shadow-lg: 0 8px 32px hsl(30 10% 20% / 0.12);
+    --shadow-glow: 0 0 30px hsl(14 51% 47% / 0.2);
+
+    /* Typography */
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    /* Sidebar */
+    --sidebar-background: 36 30% 98%;
+    --sidebar-foreground: 30 10% 20%;
+    --sidebar-primary: 14 51% 47%;
+    --sidebar-primary-foreground: 36 33% 98%;
+    --sidebar-accent: 38 40% 85%;
+    --sidebar-accent-foreground: 30 10% 20%;
+    --sidebar-border: 36 25% 85%;
+    --sidebar-ring: 14 51% 47%;
+  }
+
+  .dark {
+    --background: 25 20% 12%;
+    --foreground: 36 33% 96%;
+
+    --card: 25 18% 16%;
+    --card-foreground: 36 33% 96%;
+
+    --popover: 25 18% 16%;
+    --popover-foreground: 36 33% 96%;
+
+    --primary: 14 55% 55%;
+    --primary-foreground: 25 20% 10%;
+
+    --secondary: 30 15% 25%;
+    --secondary-foreground: 36 33% 96%;
+
+    --muted: 30 15% 22%;
+    --muted-foreground: 36 20% 65%;
+
+    --accent: 90 40% 45%;
+    --accent-foreground: 25 20% 10%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 36 33% 96%;
+
+    --border: 30 15% 25%;
+    --input: 30 15% 25%;
+    --ring: 14 55% 55%;
+
+    --sidebar-background: 25 18% 14%;
+    --sidebar-foreground: 36 33% 96%;
+    --sidebar-primary: 14 55% 55%;
+    --sidebar-primary-foreground: 25 20% 10%;
+    --sidebar-accent: 30 15% 22%;
+    --sidebar-accent-foreground: 36 33% 96%;
+    --sidebar-border: 30 15% 22%;
+    --sidebar-ring: 14 55% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-wide;
+  }
+}
+
+@layer components {
+  .btn-hero {
+    @apply bg-primary text-primary-foreground px-8 py-4 text-lg font-semibold rounded-md 
+           shadow-lg hover:shadow-xl transition-all duration-300 
+           hover:scale-105 active:scale-100;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-accent-foreground px-6 py-3 font-semibold rounded-md 
+           shadow-md hover:shadow-lg transition-all duration-300;
+  }
+
+  .card-product {
+    @apply bg-card rounded-lg overflow-hidden shadow-md hover:shadow-lg 
+           transition-all duration-300 hover:-translate-y-1;
+  }
+
+  .section-heading {
+    @apply text-4xl md:text-5xl lg:text-6xl font-display tracking-wider text-foreground;
+  }
+
+  .gradient-overlay {
+    background: var(--gradient-hero);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
