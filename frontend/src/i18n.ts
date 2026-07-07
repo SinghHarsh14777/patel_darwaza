@@ -108,7 +108,7 @@ const resources = {
       "err_msg_long": "Message too long",
       "toast_wa_title": "Opening WhatsApp...",
       "toast_wa_desc": "Redirecting you to our chat.",
-      "contact_wa_template": "*New Inquiry from Earthly Builds*\n\nName: {{name}}\nPhone: {{phone}}\nRequirement: {{message}}"
+      "contact_wa_template": "*New Inquiry from patel-darwaza*\n\nName: {{name}}\nPhone: {{phone}}\nRequirement: {{message}}"
     }
   },
   hi: {
