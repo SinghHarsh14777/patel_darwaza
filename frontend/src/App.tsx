@@ -15,8 +15,8 @@ const queryClient = new QueryClient();
 
 // 1. APNI STORE KI LOCATION YAHAN ENTER KAREIN
 const STORE_LOCATION = {
-  lat: 19.0760, // Mumbai
-  lng: 72.8777,
+  lat: 25.4813512,
+  lng: 82.8297396,
 };
 const MAX_DISTANCE_KM = 50; 
 
