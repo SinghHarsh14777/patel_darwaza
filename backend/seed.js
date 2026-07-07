@@ -1,4 +1,5 @@
 // seed.js
+require('dotenv').config();
 const mongoose = require('mongoose');
 const Product = require('./models/Product'); 
 
@@ -234,7 +235,7 @@ const productsData = [
 const seedDB = async () => {
   try {
     // Apna MongoDB URL yahan update karein
-    const MONGO_URI = 'mongodb://127.0.0.1:27017/earthworks'; 
+    const MONGO_URI = process.env.MONGO_URI;
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
