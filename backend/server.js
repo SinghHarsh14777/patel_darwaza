@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -14,7 +15,7 @@ app.use(express.json());
 
 // MongoDB Connection
 // 'your_database_name' ko apne hisaab se change kar lein
-const MONGO_URI = 'mongodb://127.0.0.1:27017/earthworks'; 
+const MONGO_URI =process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
