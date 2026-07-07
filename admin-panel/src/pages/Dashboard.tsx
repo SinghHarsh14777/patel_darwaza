@@ -11,7 +11,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/products')
+    fetch('https://patel-darwaza.onrender.com/api/products')
       .then((res) => {
         if (!res.ok) throw new Error('Network response was not ok');
         return res.json();
