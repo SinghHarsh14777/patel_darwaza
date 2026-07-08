@@ -71,18 +71,78 @@ const ManageProducts = () => {
     }
   };
 
+  // const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (!editingProduct) return;
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     const reader = new FileReader();
+  //     reader.onloadend = () => {
+  //       setEditingProduct({ ...editingProduct, image: reader.result as string });
+  //     };
+  //     reader.readAsDataURL(file);
+  //   }
+  // };
+
   const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editingProduct) return;
     const file = e.target.files?.[0];
+    
     if (file) {
+      // Yahan tum apni required width aur height set kar sakte ho
+      const TARGET_WIDTH = 600; 
+      const TARGET_HEIGHT = 600;
+      const IMAGE_QUALITY = 0.7; // 0.0 se 1.0 ke beech (0.7 means 70% quality, good for web)
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditingProduct({ ...editingProduct, image: reader.result as string });
-      };
       reader.readAsDataURL(file);
+      
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = TARGET_WIDTH;
+          canvas.height = TARGET_HEIGHT;
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) return;
+
+          // Center Crop Logic
+          let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
+          const aspectRatio = TARGET_WIDTH / TARGET_HEIGHT;
+          const imgAspectRatio = img.width / img.height;
+
+          if (imgAspectRatio > aspectRatio) {
+            // Image zyada wide hai (Landscape)
+            sWidth = img.height * aspectRatio;
+            sx = (img.width - sWidth) / 2; // Center mein align karne ke liye
+          } else {
+            // Image zyada tall hai (Portrait)
+            sHeight = img.width / aspectRatio;
+            sy = (img.height - sHeight) / 2; // Center mein align karne ke liye
+          }
+
+          // Canvas ko white background do (agar transparent PNG hui toh black background nahi aayega)
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+
+          // Image ko canvas par crop karke draw karo
+          ctx.drawImage(
+            img, 
+            sx, sy, sWidth, sHeight, // Source image ka konsa hissa lena hai
+            0, 0, TARGET_WIDTH, TARGET_HEIGHT // Canvas par kahan draw karna hai
+          );
+
+          // Canvas se compress ki hui base64 string nikalo (JPEG format mein convert karke size reduce karna)
+          const compressedBase64 = canvas.toDataURL('image/jpeg', IMAGE_QUALITY);
+          
+          // State update karo naye optimized image ke sath
+          setEditingProduct({ ...editingProduct, image: compressedBase64 });
+        };
+      };
     }
   };
-
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
