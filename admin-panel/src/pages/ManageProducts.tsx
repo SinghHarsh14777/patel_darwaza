@@ -20,7 +20,7 @@ const ManageProducts = () => {
     try {
       setIsLoading(true);
       setFetchError(null);
-      const res = await fetch('http://localhost:5000/api/products');
+      const res = await fetch('https://patel-darwaza.onrender.com/api/products');
       if (!res.ok) throw new Error('Failed to fetch products');
       const data = await res.json();
       setProducts(data);
@@ -43,7 +43,7 @@ const ManageProducts = () => {
   const translateText = async (text: string) => {
     if (!text) return '';
     try {
-      const response = await fetch(`http://localhost:5000/api/translate?text=${encodeURIComponent(text)}`);
+      const response = await fetch(`https://patel-darwaza.onrender.com/api/translate?text=${encodeURIComponent(text)}`);
       if (!response.ok) throw new Error('Backend translation failed');
       
       const data = await response.json();
@@ -134,7 +134,7 @@ const ManageProducts = () => {
 
     setIsUpdating(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/products/${editingProduct.id}`, {
+      const response = await fetch(`https://patel-darwaza.onrender.com/api/products/${editingProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
