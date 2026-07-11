@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { Loader2, Edit, X, UploadCloud, AlertCircle, Languages } from 'lucide-react';
+import { Loader2, Edit, X, UploadCloud, AlertCircle, Check } from 'lucide-react';
+
+// Naya Import Crop aur uski CSS ke liye
+import ReactCrop, { Crop } from 'react-image-crop';
+
+// @ts-ignore (Ye TypeScript ki red line error hatane ke liye hai)
+import 'react-image-crop/dist/ReactCrop.css';
 
 const ManageProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -10,7 +16,21 @@ const ManageProducts = () => {
   // Edit State
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isTranslating, setIsTranslating] = useState(false); // Translation loading state
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  // --- NAYA: Crop & Compress State ---
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [upImg, setUpImg] = useState<string | null>(null); // Original Uploaded Image
+  const [imgRef, setImgRef] = useState<HTMLImageElement | null>(null); // Image reference
+  const [crop, setCrop] = useState<Crop>({
+    unit: '%',
+    width: 50,
+    height: 50,
+    x: 25,
+    y: 25
+  });
+  const [completedCrop, setCompletedCrop] = useState<any>(null);
+  // -----------------------------------
 
   useEffect(() => {
     fetchProducts();
@@ -20,7 +40,7 @@ const ManageProducts = () => {
     try {
       setIsLoading(true);
       setFetchError(null);
-      const res = await fetch('https://patel-darwaza.onrender.com/api/products');
+      const res = await fetch('http://localhost:5000/api/products');
       if (!res.ok) throw new Error('Failed to fetch products');
       const data = await res.json();
       setProducts(data);
@@ -32,38 +52,34 @@ const ManageProducts = () => {
     }
   };
 
-  // Helper Function: Object ya String ko safely read karne ke liye
   const getText = (val: any, lang: 'en' | 'hi' = 'en') => {
     if (!val) return '';
     if (typeof val === 'object') return val[lang] || val.en || '';
     return String(val);
   };
 
-  // ✅ UPDATE: Ab ye backend API ko call karega (CORS error nahi aayega)
   const translateText = async (text: string) => {
     if (!text) return '';
     try {
-      const response = await fetch(`https://patel-darwaza.onrender.com/api/translate?text=${encodeURIComponent(text)}`);
+      const response = await fetch(`http://localhost:5000/api/translate?text=${encodeURIComponent(text)}`);
       if (!response.ok) throw new Error('Backend translation failed');
       
       const data = await response.json();
-      return data.translatedText; // Backend se aya hua Hindi text return hoga
+      return data.translatedText;
     } catch (error) {
       console.error("Translation error:", error);
       return ''; 
     }
   };
 
-  // Auto-translate handler (Jab user English input se bahar click kare)
   const handleEnglishBlur = async (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!editingProduct) return;
     const { name, value } = e.target;
     
-    // Agar input khali hai, toh translate mat karo
     if (!value.trim()) return;
 
     if (name.includes('.en')) {
-      const field = name.split('.')[0]; // 'name' ya 'description'
+      const field = name.split('.')[0]; 
       
       setIsTranslating(true);
       const translated = await translateText(value);
@@ -77,8 +93,8 @@ const ManageProducts = () => {
             ...prev,
             [field]: {
               ...(typeof currentFieldValue === 'object' ? currentFieldValue : { en: currentFieldValue }),
-              en: value, // Ensure English is updated
-              hi: translated // Auto-fill Hindi text
+              en: value,
+              hi: translated
             }
           };
         });
@@ -86,7 +102,6 @@ const ManageProducts = () => {
     }
   };
 
-  // Jab koi input edit kare
   const handleEditChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -116,17 +131,63 @@ const ManageProducts = () => {
     }
   };
 
-  const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!editingProduct) return;
-    const file = e.target.files?.[0];
-    if (file) {
+  // --- NAYA: Image File Select Handler ---
+  const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditingProduct({ ...editingProduct, image: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      reader.addEventListener('load', () => {
+        setUpImg(reader.result as string);
+        setCropModalOpen(true); // Image select hote hi Crop Modal open hoga
+      });
+      reader.readAsDataURL(e.target.files[0]);
+      
+      // Reset input jisse same image dobara select ho sake
+      e.target.value = '';
     }
   };
+
+  // --- NAYA: Crop Apply aur Image Compression Logic ---
+  const handleCropAndCompress = () => {
+    if (!imgRef || !completedCrop || !completedCrop.width || !completedCrop.height || !editingProduct) {
+      setCropModalOpen(false);
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    // Scale factor nikalna (Kyuki UI mein image choti dikhti hai aur original badi hoti hai)
+    const scaleX = imgRef.naturalWidth / imgRef.width;
+    const scaleY = imgRef.naturalHeight / imgRef.height;
+
+    canvas.width = completedCrop.width;
+    canvas.height = completedCrop.height;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    // Crop area ko canvas par draw karna
+    ctx.drawImage(
+      imgRef,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      completedCrop.width,
+      completedCrop.height
+    );
+
+    // Canvas se compress ki hui image nikalna (0.7 mtlb 70% quality, jisse size kaafi kam ho jata hai)
+    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+    // Editing product state mein compressed image save karna
+    setEditingProduct({ ...editingProduct, image: compressedBase64 });
+    
+    // Modal close aur states reset
+    setCropModalOpen(false);
+    setUpImg(null);
+  };
+  // ---------------------------------------------------
 
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +195,7 @@ const ManageProducts = () => {
 
     setIsUpdating(true);
     try {
-      const response = await fetch(`https://patel-darwaza.onrender.com/api/products/${editingProduct.id}`, {
+      const response = await fetch(`http://localhost:5000/api/products/${editingProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -166,6 +227,7 @@ const ManageProducts = () => {
         </div>
       </div>
 
+      {/* Table Code... Same as before */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center items-center py-20">
@@ -240,6 +302,45 @@ const ManageProducts = () => {
         )}
       </div>
 
+      {/* --- CROP IMAGE MODAL (Topmost Z-index) --- */}
+      {cropModalOpen && upImg && (
+        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-fade-in flex flex-col max-h-[95vh]">
+            <div className="bg-slate-800 p-4 text-white flex justify-between items-center shrink-0">
+              <h2 className="text-lg font-bold">Crop & Compress Image</h2>
+              <button onClick={() => setCropModalOpen(false)} className="p-1 hover:bg-slate-700 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-auto flex justify-center bg-slate-100">
+              <ReactCrop 
+                crop={crop} 
+                onChange={(c) => setCrop(c)} 
+                onComplete={(c) => setCompletedCrop(c)}
+              >
+                <img 
+                  src={upImg} 
+                  onLoad={(e) => setImgRef(e.currentTarget)} 
+                  alt="Crop preview" 
+                  style={{ maxHeight: '60vh', width: 'auto' }}
+                />
+              </ReactCrop>
+            </div>
+            
+            <div className="p-4 bg-white border-t shrink-0 flex justify-end gap-3">
+              <button onClick={() => setCropModalOpen(false)} className="px-5 py-2 text-slate-600 border border-gray-300 rounded-lg hover:bg-gray-100">
+                Cancel
+              </button>
+              <button onClick={handleCropAndCompress} className="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2">
+                <Check size={18} /> Apply & Compress
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ------------------------------------------ */}
+
       {/* EDIT MODAL POPUP */}
       {editingProduct && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -255,12 +356,16 @@ const ManageProducts = () => {
             </div>
             
             <form onSubmit={handleUpdateSubmit} className="p-6 space-y-5">
+              
+              {/* IMAGE SECTION */}
               <div className="flex gap-6 items-center">
-                <img src={editingProduct.image} alt="preview" className="w-24 h-24 object-cover rounded-xl border-2 border-gray-200" />
-                <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-slate-700 rounded-lg cursor-pointer transition-colors border border-gray-300">
-                  <UploadCloud size={20} /> Change Image
-                  <input type="file" className="hidden" accept="image/*" onChange={handleEditImageUpload} />
+                <img src={editingProduct.image} alt="preview" className="w-24 h-24 object-cover rounded-xl border-2 border-gray-200 shadow-sm" />
+                <label className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium rounded-lg cursor-pointer transition-colors border border-emerald-200">
+                  <UploadCloud size={20} /> Choose New Image
+                  {/* Ab yahan handleEditImageSelect call hoga */}
+                  <input type="file" className="hidden" accept="image/*" onChange={handleEditImageSelect} />
                 </label>
+                <p className="text-xs text-slate-400">Image select karte hi <br/> crop aur compress hogi.</p>
               </div>
 
               {/* Title Inputs (English & Hindi) */}
