@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { Loader2, Edit, X, UploadCloud, AlertCircle } from 'lucide-react';
+import { Loader2, Edit, X, UploadCloud, AlertCircle, Languages } from 'lucide-react';
 
 const ManageProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -10,6 +10,7 @@ const ManageProducts = () => {
   // Edit State
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false); // Translation loading state
 
   useEffect(() => {
     fetchProducts();
@@ -19,7 +20,7 @@ const ManageProducts = () => {
     try {
       setIsLoading(true);
       setFetchError(null);
-      const res = await fetch('https://patel-darwaza.onrender.com/api/products');
+      const res = await fetch('http://localhost:5000/api/products');
       if (!res.ok) throw new Error('Failed to fetch products');
       const data = await res.json();
       setProducts(data);
@@ -35,10 +36,57 @@ const ManageProducts = () => {
   const getText = (val: any, lang: 'en' | 'hi' = 'en') => {
     if (!val) return '';
     if (typeof val === 'object') return val[lang] || val.en || '';
-    return String(val); // Agar normal string hai toh wahi return karega
+    return String(val);
   };
 
-  // Jab koi input edit kare (Nested Object support ke sath)
+  // ✅ UPDATE: Ab ye backend API ko call karega (CORS error nahi aayega)
+  const translateText = async (text: string) => {
+    if (!text) return '';
+    try {
+      const response = await fetch(`http://localhost:5000/api/translate?text=${encodeURIComponent(text)}`);
+      if (!response.ok) throw new Error('Backend translation failed');
+      
+      const data = await response.json();
+      return data.translatedText; // Backend se aya hua Hindi text return hoga
+    } catch (error) {
+      console.error("Translation error:", error);
+      return ''; 
+    }
+  };
+
+  // Auto-translate handler (Jab user English input se bahar click kare)
+  const handleEnglishBlur = async (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (!editingProduct) return;
+    const { name, value } = e.target;
+    
+    // Agar input khali hai, toh translate mat karo
+    if (!value.trim()) return;
+
+    if (name.includes('.en')) {
+      const field = name.split('.')[0]; // 'name' ya 'description'
+      
+      setIsTranslating(true);
+      const translated = await translateText(value);
+      setIsTranslating(false);
+
+      if (translated) {
+        const currentFieldValue = editingProduct[field as keyof Product];
+        setEditingProduct(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            [field]: {
+              ...(typeof currentFieldValue === 'object' ? currentFieldValue : { en: currentFieldValue }),
+              en: value, // Ensure English is updated
+              hi: translated // Auto-fill Hindi text
+            }
+          };
+        });
+      }
+    }
+  };
+
+  // Jab koi input edit kare
   const handleEditChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -49,10 +97,8 @@ const ManageProducts = () => {
     const checked = isCheckbox ? (e.target as HTMLInputElement).checked : false;
     const finalValue = isCheckbox ? checked : value;
 
-    // Agar input ka name 'name.en' ya 'description.hi' format mein hai
     if (name.includes('.')) {
       const [field, lang] = name.split('.'); 
-      
       const currentFieldValue = editingProduct[field as keyof Product];
       
       setEditingProduct({
@@ -63,7 +109,6 @@ const ManageProducts = () => {
         }
       });
     } else {
-      // Normal flat values (price, stock, etc.) ke liye
       setEditingProduct({
         ...editingProduct,
         [name]: finalValue
@@ -71,85 +116,25 @@ const ManageProducts = () => {
     }
   };
 
-  // const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (!editingProduct) return;
-  //   const file = e.target.files?.[0];
-  //   if (file) {
-  //     const reader = new FileReader();
-  //     reader.onloadend = () => {
-  //       setEditingProduct({ ...editingProduct, image: reader.result as string });
-  //     };
-  //     reader.readAsDataURL(file);
-  //   }
-  // };
-
   const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editingProduct) return;
     const file = e.target.files?.[0];
-    
     if (file) {
-      // Yahan tum apni required width aur height set kar sakte ho
-      const TARGET_WIDTH = 600; 
-      const TARGET_HEIGHT = 600;
-      const IMAGE_QUALITY = 0.7; // 0.0 se 1.0 ke beech (0.7 means 70% quality, good for web)
-
       const reader = new FileReader();
-      reader.readAsDataURL(file);
-      
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = TARGET_WIDTH;
-          canvas.height = TARGET_HEIGHT;
-          const ctx = canvas.getContext('2d');
-
-          if (!ctx) return;
-
-          // Center Crop Logic
-          let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
-          const aspectRatio = TARGET_WIDTH / TARGET_HEIGHT;
-          const imgAspectRatio = img.width / img.height;
-
-          if (imgAspectRatio > aspectRatio) {
-            // Image zyada wide hai (Landscape)
-            sWidth = img.height * aspectRatio;
-            sx = (img.width - sWidth) / 2; // Center mein align karne ke liye
-          } else {
-            // Image zyada tall hai (Portrait)
-            sHeight = img.width / aspectRatio;
-            sy = (img.height - sHeight) / 2; // Center mein align karne ke liye
-          }
-
-          // Canvas ko white background do (agar transparent PNG hui toh black background nahi aayega)
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
-
-          // Image ko canvas par crop karke draw karo
-          ctx.drawImage(
-            img, 
-            sx, sy, sWidth, sHeight, // Source image ka konsa hissa lena hai
-            0, 0, TARGET_WIDTH, TARGET_HEIGHT // Canvas par kahan draw karna hai
-          );
-
-          // Canvas se compress ki hui base64 string nikalo (JPEG format mein convert karke size reduce karna)
-          const compressedBase64 = canvas.toDataURL('image/jpeg', IMAGE_QUALITY);
-          
-          // State update karo naye optimized image ke sath
-          setEditingProduct({ ...editingProduct, image: compressedBase64 });
-        };
+      reader.onloadend = () => {
+        setEditingProduct({ ...editingProduct, image: reader.result as string });
       };
+      reader.readAsDataURL(file);
     }
   };
+
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
 
     setIsUpdating(true);
     try {
-      const response = await fetch(`https://patel-darwaza.onrender.com/api/products/${editingProduct.id}`, {
+      const response = await fetch(`http://localhost:5000/api/products/${editingProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -224,7 +209,6 @@ const ManageProducts = () => {
                         <img src={product.image} alt={getText(product.name)} className="w-12 h-12 object-cover rounded-lg border bg-gray-100" />
                       </td>
                       <td className="p-4 text-sm font-mono text-slate-500">{product.id}</td>
-                      {/* Name ko safely getText se render kiya gaya hai */}
                       <td className="p-4 font-medium text-slate-900">{getText(product.name)}</td>
                       <td className="p-4 text-emerald-600 font-medium">
                         {product.price ? `₹${product.price}` : 'Ask'}
@@ -261,7 +245,10 @@ const ManageProducts = () => {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-fade-in">
             <div className="sticky top-0 bg-slate-800 p-5 text-white flex justify-between items-center z-10">
-              <h2 className="text-xl font-bold">Edit Product: {editingProduct.id}</h2>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                Edit Product: {editingProduct.id}
+                {isTranslating && <Loader2 className="animate-spin text-emerald-400 ml-4" size={18} />}
+              </h2>
               <button onClick={() => setEditingProduct(null)} className="p-1 hover:bg-slate-700 rounded-full transition-colors">
                 <X size={24} />
               </button>
@@ -277,14 +264,30 @@ const ManageProducts = () => {
               </div>
 
               {/* Title Inputs (English & Hindi) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border relative">
                 <div>
                   <label className="text-sm font-medium text-slate-700">Name (English)</label>
-                  <input required name="name.en" value={getText(editingProduct.name, 'en')} onChange={handleEditChange} className="mt-1 px-3 py-2 border rounded-lg w-full focus:ring-2 focus:ring-emerald-500 outline-none" />
+                  <input 
+                    required 
+                    name="name.en" 
+                    value={getText(editingProduct.name, 'en')} 
+                    onChange={handleEditChange} 
+                    onBlur={handleEnglishBlur} 
+                    className="mt-1 px-3 py-2 border rounded-lg w-full focus:ring-2 focus:ring-emerald-500 outline-none" 
+                    placeholder="Type and click outside to translate..."
+                  />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Name (Hindi)</label>
-                  <input name="name.hi" value={getText(editingProduct.name, 'hi')} onChange={handleEditChange} className="mt-1 px-3 py-2 border rounded-lg w-full focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="हिंदी नाम..." />
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                    Name (Hindi) {isTranslating && <span className="text-xs text-emerald-600 animate-pulse">(Translating...)</span>}
+                  </label>
+                  <input 
+                    name="name.hi" 
+                    value={getText(editingProduct.name, 'hi')} 
+                    onChange={handleEditChange} 
+                    className="mt-1 px-3 py-2 border rounded-lg w-full focus:ring-2 focus:ring-emerald-500 outline-none" 
+                    placeholder="हिंदी नाम..." 
+                  />
                 </div>
               </div>
 
@@ -328,11 +331,29 @@ const ManageProducts = () => {
               <div className="space-y-4 bg-slate-50 p-4 rounded-lg border">
                 <div>
                   <label className="text-sm font-medium text-slate-700">Description (English)</label>
-                  <textarea required name="description.en" value={getText(editingProduct.description, 'en')} onChange={handleEditChange} rows={3} className="mt-1 px-3 py-2 border rounded-lg w-full focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+                  <textarea 
+                    required 
+                    name="description.en" 
+                    value={getText(editingProduct.description, 'en')} 
+                    onChange={handleEditChange} 
+                    onBlur={handleEnglishBlur} 
+                    rows={3} 
+                    className="mt-1 px-3 py-2 border rounded-lg w-full focus:ring-2 focus:ring-emerald-500 outline-none"
+                    placeholder="Type and click outside to translate..."
+                  ></textarea>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Description (Hindi)</label>
-                  <textarea name="description.hi" value={getText(editingProduct.description, 'hi')} onChange={handleEditChange} rows={3} className="mt-1 px-3 py-2 border rounded-lg w-full focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="हिंदी विवरण..."></textarea>
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                    Description (Hindi) {isTranslating && <span className="text-xs text-emerald-600 animate-pulse">(Translating...)</span>}
+                  </label>
+                  <textarea 
+                    name="description.hi" 
+                    value={getText(editingProduct.description, 'hi')} 
+                    onChange={handleEditChange} 
+                    rows={3} 
+                    className="mt-1 px-3 py-2 border rounded-lg w-full focus:ring-2 focus:ring-emerald-500 outline-none" 
+                    placeholder="हिंदी विवरण..."
+                  ></textarea>
                 </div>
               </div>
 
@@ -343,7 +364,7 @@ const ManageProducts = () => {
 
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button type="button" onClick={() => setEditingProduct(null)} className="px-5 py-2 text-slate-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
-                <button type="submit" disabled={isUpdating} className="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed">
+                <button type="submit" disabled={isUpdating || isTranslating} className="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed">
                   {isUpdating ? <Loader2 className="animate-spin" size={18} /> : 'Update Product'}
                 </button>
               </div>
